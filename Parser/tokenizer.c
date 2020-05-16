@@ -110,7 +110,9 @@ const char *_PyParser_TokenNames[] = {
     "COMMENT",
     "NL",
     "ENCODING",
-    "<N_TOKENS>"
+    "<N_TOKENS>",
+    "PXYTAGCLOSEREND"
+    "PXYTAGCLOSERSTART"
 };
 
 
@@ -1170,6 +1172,7 @@ PyToken_TwoChars(int c1, int c2)
     case '<':
         switch (c2) {
         case '>':               return NOTEQUAL;
+        case '/':               return PXYTAGCLOSERSTART;
         case '=':               return LESSEQUAL;
         case '<':               return LEFTSHIFT;
         }
@@ -1200,6 +1203,7 @@ PyToken_TwoChars(int c1, int c2)
     case '/':
         switch (c2) {
         case '/':               return DOUBLESLASH;
+        case '>':               return PXYTAGCLOSEREND;
         case '=':               return SLASHEQUAL;
         }
         break;

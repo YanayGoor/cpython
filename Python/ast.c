@@ -2347,6 +2347,27 @@ ast_for_binop(struct compiling *c, const node *n)
 }
 
 static expr_ty
+ast_for_pyx(struct compiling *c, const node *n)
+{
+    node *name = CHILD(n, 1);
+    if (TYPE(CHILD(n, 2)) == PXYTAGCLOSEREND) {
+        // '<' NAME '/>'
+
+        return Pyx(PyUnicode_FromString(STR(name)), LINENO(n), n->n_col_offset, c->c_arena);
+    } else {
+        // '<' NAME '>' [NEWLINE] '</' NAME '>'
+        node *other_name = RCHILD(CHILD(n, 2), -1);
+        if (strcmp(STR(name), STR(other_name))) {
+            PyErr_Format(PyExc_SystemError, "non matching jsx tags %d, %d", STR(name), STR(other_name));
+            return NULL;
+        }
+        return Pyx(PyUnicode_FromString(STR(other_name)), LINENO(n), n->n_col_offset, c->c_arena);
+    }
+    PyErr_Format(PyExc_SystemError, "unsupported jsx syntax %d", STR(n));
+    return NULL;
+}
+
+static expr_ty
 ast_for_trailer(struct compiling *c, const node *n, expr_ty left_expr)
 {
     /* trailer: '(' [arglist] ')' | '[' subscriptlist ']' | '.' NAME
@@ -2646,7 +2667,10 @@ ast_for_expr(struct compiling *c, const node *n)
            is the same in each case, but the switch turned inside out to
            reuse the code for each type of operator.
          */
+        case pyx:
+            return ast_for_pyx(c, n);
         case expr:
+        case or_expr:
         case xor_expr:
         case and_expr:
         case shift_expr:

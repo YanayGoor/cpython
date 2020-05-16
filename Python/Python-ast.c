@@ -205,6 +205,10 @@ static char *BinOp_fields[]={
     "op",
     "right",
 };
+static PyTypeObject *Pyx_type;
+static char *Pyx_fields[]={
+    "name",
+};
 static PyTypeObject *UnaryOp_type;
 _Py_IDENTIFIER(operand);
 static char *UnaryOp_fields[]={
@@ -914,6 +918,8 @@ static int init_types(void)
     if (!BoolOp_type) return 0;
     BinOp_type = make_type("BinOp", expr_type, BinOp_fields, 3);
     if (!BinOp_type) return 0;
+    Pyx_type = make_type("Pyx", expr_type, Pyx_fields, 1);
+    if (!Pyx_type) return 0;
     UnaryOp_type = make_type("UnaryOp", expr_type, UnaryOp_fields, 2);
     if (!UnaryOp_type) return 0;
     Lambda_type = make_type("Lambda", expr_type, Lambda_fields, 2);
@@ -1784,6 +1790,25 @@ BinOp(expr_ty left, operator_ty op, expr_ty right, int lineno, int col_offset,
     p->v.BinOp.left = left;
     p->v.BinOp.op = op;
     p->v.BinOp.right = right;
+    p->lineno = lineno;
+    p->col_offset = col_offset;
+    return p;
+}
+
+expr_ty
+Pyx(string name, int lineno, int col_offset, PyArena *arena)
+{
+    expr_ty p;
+    if (!name) {
+        PyErr_SetString(PyExc_ValueError,
+                        "field name is required for Pyx");
+        return NULL;
+    }
+    p = (expr_ty)PyArena_Malloc(arena, sizeof(*p));
+    if (!p)
+        return NULL;
+    p->kind = Pyx_kind;
+    p->v.Pyx.name = name;
     p->lineno = lineno;
     p->col_offset = col_offset;
     return p;
@@ -3083,6 +3108,15 @@ ast2obj_expr(void* _o)
         value = ast2obj_expr(o->v.BinOp.right);
         if (!value) goto failed;
         if (_PyObject_SetAttrId(result, &PyId_right, value) == -1)
+            goto failed;
+        Py_DECREF(value);
+        break;
+    case Pyx_kind:
+        result = PyType_GenericNew(Pyx_type, NULL, NULL);
+        if (!result) goto failed;
+        value = ast2obj_string(o->v.Pyx.name);
+        if (!value) goto failed;
+        if (_PyObject_SetAttrId(result, &PyId_name, value) == -1)
             goto failed;
         Py_DECREF(value);
         break;
@@ -5887,6 +5921,30 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
         if (*out == NULL) goto failed;
         return 0;
     }
+    isinstance = PyObject_IsInstance(obj, (PyObject*)Pyx_type);
+    if (isinstance == -1) {
+        return 1;
+    }
+    if (isinstance) {
+        string name;
+
+        if (_PyObject_LookupAttrId(obj, &PyId_name, &tmp) < 0) {
+            return 1;
+        }
+        if (tmp == NULL) {
+            PyErr_SetString(PyExc_TypeError, "required field \"name\" missing from Pyx");
+            return 1;
+        }
+        else {
+            int res;
+            res = obj2ast_string(tmp, &name, arena);
+            if (res != 0) goto failed;
+            Py_CLEAR(tmp);
+        }
+        *out = Pyx(name, lineno, col_offset, arena);
+        if (*out == NULL) goto failed;
+        return 0;
+    }
     isinstance = PyObject_IsInstance(obj, (PyObject*)UnaryOp_type);
     if (isinstance == -1) {
         return 1;
@@ -8219,6 +8277,7 @@ PyInit__ast(void)
         NULL;
     if (PyDict_SetItemString(d, "BinOp", (PyObject*)BinOp_type) < 0) return
         NULL;
+    if (PyDict_SetItemString(d, "Pyx", (PyObject*)Pyx_type) < 0) return NULL;
     if (PyDict_SetItemString(d, "UnaryOp", (PyObject*)UnaryOp_type) < 0) return
         NULL;
     if (PyDict_SetItemString(d, "Lambda", (PyObject*)Lambda_type) < 0) return

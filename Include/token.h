@@ -70,6 +70,8 @@ extern "C" {
 #define NL              56
 #define ENCODING                57
 #define N_TOKENS        58
+#define PXYTAGCLOSEREND        59
+#define PXYTAGCLOSERSTART        60
 
 /* Special definitions for cooperation with parser */
 
