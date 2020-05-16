@@ -2350,20 +2350,25 @@ static expr_ty
 ast_for_pyx(struct compiling *c, const node *n)
 {
     node *name = CHILD(n, 1);
-    if (TYPE(CHILD(n, 2)) == PXYTAGCLOSEREND) {
+    if (TYPE(CHILD(CHILD(n, 2), 0)) == PXYTAGCLOSEREND) {
         // '<' NAME '/>'
-
         return Pyx(PyUnicode_FromString(STR(name)), LINENO(n), n->n_col_offset, c->c_arena);
     } else {
         // '<' NAME '>' [NEWLINE] '</' NAME '>'
-        node *other_name = RCHILD(CHILD(n, 2), -1);
+        node *closure = CHILD(n, 2);
+        node *other_name = RCHILD(closure, -2);
         if (strcmp(STR(name), STR(other_name))) {
-            PyErr_Format(PyExc_SystemError, "non matching jsx tags %d, %d", STR(name), STR(other_name));
+            ast_error(c, other_name, "non matching jsx tags");
             return NULL;
+        }
+        if (NCH(closure) > 4) {
+            for (int i = 1; i < NCH(closure) - 3; i++) {
+                // NEWLINE | Pyx | { expr } | str
+            }
         }
         return Pyx(PyUnicode_FromString(STR(other_name)), LINENO(n), n->n_col_offset, c->c_arena);
     }
-    PyErr_Format(PyExc_SystemError, "unsupported jsx syntax %d", STR(n));
+    ast_error(c, n, "not implemented jsx");
     return NULL;
 }
 

@@ -121,7 +121,7 @@ dictorsetmaker: ( ((test ':' test | '**' expr)
                   ((test | star_expr)
                    (comp_for | (',' (test | star_expr))* [','])) )
 pyx: '<' NAME pyx_closure
-pyx_closure: '/>' | '>' [NEWLINE] '</' NAME '>'
+pyx_closure: '/>' | '>' [NEWLINE] (pyx [NEWLINE])* '</' NAME '>'
 
 classdef: 'class' NAME ['(' [arglist] ')'] ':' suite
 
