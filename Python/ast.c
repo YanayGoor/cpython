@@ -2352,7 +2352,8 @@ ast_for_pyx(struct compiling *c, const node *n)
     node *name = CHILD(n, 1);
     if (TYPE(CHILD(CHILD(n, 2), 0)) == PXYTAGCLOSEREND) {
         // '<' NAME '/>'
-        return Pyx(PyUnicode_FromString(STR(name)), LINENO(n), n->n_col_offset, c->c_arena);
+        asdl_seq *children = _Py_asdl_seq_new(0, c->c_arena);
+        return Pyx(PyUnicode_FromString(STR(name)), children, LINENO(n), n->n_col_offset, c->c_arena);
     } else {
         // '<' NAME '>' [NEWLINE] '</' NAME '>'
         node *closure = CHILD(n, 2);
@@ -2361,12 +2362,23 @@ ast_for_pyx(struct compiling *c, const node *n)
             ast_error(c, other_name, "non matching jsx tags");
             return NULL;
         }
+        Py_ssize_t length = 0;
         if (NCH(closure) > 4) {
             for (int i = 1; i < NCH(closure) - 3; i++) {
                 // NEWLINE | Pyx | { expr } | str
+                if (TYPE(CHILD(closure, i)) == NEWLINE) continue;
+                length++;
             }
         }
-        return Pyx(PyUnicode_FromString(STR(other_name)), LINENO(n), n->n_col_offset, c->c_arena);
+        asdl_seq *children = _Py_asdl_seq_new(length, c->c_arena);
+        if (!children) return NULL;
+        Py_ssize_t index = 0;
+        for (int i = 1; i < NCH(closure) - 3; i++) {
+            if (TYPE(CHILD(closure, i)) == NEWLINE) continue;
+            asdl_seq_SET(children, index, ast_for_pyx(c, CHILD(closure, i)));
+            index++;
+        }
+        return Pyx(PyUnicode_FromString(STR(other_name)), children, LINENO(n), n->n_col_offset, c->c_arena);
     }
     ast_error(c, n, "not implemented jsx");
     return NULL;

@@ -206,8 +206,10 @@ static char *BinOp_fields[]={
     "right",
 };
 static PyTypeObject *Pyx_type;
+_Py_IDENTIFIER(children);
 static char *Pyx_fields[]={
     "name",
+    "children",
 };
 static PyTypeObject *UnaryOp_type;
 _Py_IDENTIFIER(operand);
@@ -918,7 +920,7 @@ static int init_types(void)
     if (!BoolOp_type) return 0;
     BinOp_type = make_type("BinOp", expr_type, BinOp_fields, 3);
     if (!BinOp_type) return 0;
-    Pyx_type = make_type("Pyx", expr_type, Pyx_fields, 1);
+    Pyx_type = make_type("Pyx", expr_type, Pyx_fields, 2);
     if (!Pyx_type) return 0;
     UnaryOp_type = make_type("UnaryOp", expr_type, UnaryOp_fields, 2);
     if (!UnaryOp_type) return 0;
@@ -1796,7 +1798,8 @@ BinOp(expr_ty left, operator_ty op, expr_ty right, int lineno, int col_offset,
 }
 
 expr_ty
-Pyx(string name, int lineno, int col_offset, PyArena *arena)
+Pyx(string name, asdl_seq * children, int lineno, int col_offset, PyArena
+    *arena)
 {
     expr_ty p;
     if (!name) {
@@ -1809,6 +1812,7 @@ Pyx(string name, int lineno, int col_offset, PyArena *arena)
         return NULL;
     p->kind = Pyx_kind;
     p->v.Pyx.name = name;
+    p->v.Pyx.children = children;
     p->lineno = lineno;
     p->col_offset = col_offset;
     return p;
@@ -3117,6 +3121,11 @@ ast2obj_expr(void* _o)
         value = ast2obj_string(o->v.Pyx.name);
         if (!value) goto failed;
         if (_PyObject_SetAttrId(result, &PyId_name, value) == -1)
+            goto failed;
+        Py_DECREF(value);
+        value = ast2obj_list(o->v.Pyx.children, ast2obj_expr);
+        if (!value) goto failed;
+        if (_PyObject_SetAttrId(result, &PyId_children, value) == -1)
             goto failed;
         Py_DECREF(value);
         break;
@@ -5927,6 +5936,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
     }
     if (isinstance) {
         string name;
+        asdl_seq* children;
 
         if (_PyObject_LookupAttrId(obj, &PyId_name, &tmp) < 0) {
             return 1;
@@ -5941,7 +5951,37 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
             if (res != 0) goto failed;
             Py_CLEAR(tmp);
         }
-        *out = Pyx(name, lineno, col_offset, arena);
+        if (_PyObject_LookupAttrId(obj, &PyId_children, &tmp) < 0) {
+            return 1;
+        }
+        if (tmp == NULL) {
+            PyErr_SetString(PyExc_TypeError, "required field \"children\" missing from Pyx");
+            return 1;
+        }
+        else {
+            int res;
+            Py_ssize_t len;
+            Py_ssize_t i;
+            if (!PyList_Check(tmp)) {
+                PyErr_Format(PyExc_TypeError, "Pyx field \"children\" must be a list, not a %.200s", tmp->ob_type->tp_name);
+                goto failed;
+            }
+            len = PyList_GET_SIZE(tmp);
+            children = _Py_asdl_seq_new(len, arena);
+            if (children == NULL) goto failed;
+            for (i = 0; i < len; i++) {
+                expr_ty val;
+                res = obj2ast_expr(PyList_GET_ITEM(tmp, i), &val, arena);
+                if (res != 0) goto failed;
+                if (len != PyList_GET_SIZE(tmp)) {
+                    PyErr_SetString(PyExc_RuntimeError, "Pyx field \"children\" changed size during iteration");
+                    goto failed;
+                }
+                asdl_seq_SET(children, i, val);
+            }
+            Py_CLEAR(tmp);
+        }
+        *out = Pyx(name, children, lineno, col_offset, arena);
         if (*out == NULL) goto failed;
         return 0;
     }
