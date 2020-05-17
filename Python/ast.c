@@ -2365,7 +2365,6 @@ ast_for_pyx(struct compiling *c, const node *n)
         Py_ssize_t length = 0;
         if (NCH(closure) > 4) {
             for (int i = 1; i < NCH(closure) - 3; i++) {
-                // NEWLINE | Pyx | { expr } | str
                 if (TYPE(CHILD(closure, i)) == NEWLINE) continue;
                 length++;
             }
@@ -2374,8 +2373,13 @@ ast_for_pyx(struct compiling *c, const node *n)
         if (!children) return NULL;
         Py_ssize_t index = 0;
         for (int i = 1; i < NCH(closure) - 3; i++) {
+            // NEWLINE | Pyx | { expr } | str
             if (TYPE(CHILD(closure, i)) == NEWLINE) continue;
-            asdl_seq_SET(children, index, ast_for_pyx(c, CHILD(closure, i)));
+            if (TYPE(CHILD(CHILD(closure, i), 0)) == LESS) {
+                asdl_seq_SET(children, index, ast_for_pyx(c, CHILD(CHILD(closure, i), 0)));
+            } else if (TYPE(CHILD(CHILD(closure, i), 0)) == LBRACE) {
+                asdl_seq_SET(children, index, ast_for_expr(c, CHILD(CHILD(closure, i), 1)));
+            }
             index++;
         }
         return Pyx(PyUnicode_FromString(STR(other_name)), children, LINENO(n), n->n_col_offset, c->c_arena);
