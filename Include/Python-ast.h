@@ -230,6 +230,7 @@ struct _expr {
 
         struct {
             string name;
+            asdl_seq *kwargs;
             asdl_seq *children;
         } Pyx;
 
@@ -533,9 +534,9 @@ expr_ty _Py_BoolOp(boolop_ty op, asdl_seq * values, int lineno, int col_offset,
 #define BinOp(a0, a1, a2, a3, a4, a5) _Py_BinOp(a0, a1, a2, a3, a4, a5)
 expr_ty _Py_BinOp(expr_ty left, operator_ty op, expr_ty right, int lineno, int
                   col_offset, PyArena *arena);
-#define Pyx(a0, a1, a2, a3, a4) _Py_Pyx(a0, a1, a2, a3, a4)
-expr_ty _Py_Pyx(string name, asdl_seq * children, int lineno, int col_offset,
-                PyArena *arena);
+#define Pyx(a0, a1, a2, a3, a4, a5) _Py_Pyx(a0, a1, a2, a3, a4, a5)
+expr_ty _Py_Pyx(string name, asdl_seq * kwargs, asdl_seq * children, int
+                lineno, int col_offset, PyArena *arena);
 #define UnaryOp(a0, a1, a2, a3, a4) _Py_UnaryOp(a0, a1, a2, a3, a4)
 expr_ty _Py_UnaryOp(unaryop_ty op, expr_ty operand, int lineno, int col_offset,
                     PyArena *arena);

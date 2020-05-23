@@ -120,9 +120,12 @@ dictorsetmaker: ( ((test ':' test | '**' expr)
                    (comp_for | (',' (test ':' test | '**' expr))* [','])) |
                   ((test | star_expr)
                    (comp_for | (',' (test | star_expr))* [','])) )
-pyx: '<' NAME pyx_closure
-pyx_closure: '/>' | '>' [NEWLINE] (pyx_expr [NEWLINE])* '</' NAME '>'
-pyx_expr: pyx | '{' expr '}'
+pyx: '<' NAME [pyx_args] pyx_closure
+pyx_closure: '/>' | '>' [NEWLINE] (pyx_child [NEWLINE])* '</' NAME '>'
+pyx_child: pyx | '{' test '}'
+pyx_args: (pyx_arg | NEWLINE)+
+pyx_arg: NAME ['=' '{' test '}']
+# pyx_arg: '{' '**' expr '}'
 
 classdef: 'class' NAME ['(' [arglist] ')'] ':' suite
 
