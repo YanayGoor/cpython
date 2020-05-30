@@ -2348,14 +2348,22 @@ ast_for_binop(struct compiling *c, const node *n)
 
 
 static keyword_ty
-ast_for_pyx_kwarg(struct compiling *c, const node *keyword)
+ast_for_pyx_kwarg(struct compiling *c, const node *n)
 {
-    identifier key = NEW_IDENTIFIER(CHILD(keyword, 0));
-    if (!key)
-        return NULL;
-    expr_ty e = ast_for_expr(c, CHILD(keyword, 3));
-    if (!e)
-        return NULL;
+    identifier key = NULL;
+    expr_ty e;
+    if (TYPE(CHILD(n, 0)) != LBRACE) {
+        key = NEW_IDENTIFIER(CHILD(n, 0));
+        if (!key)
+            return NULL;
+    }
+    if (NCH(n) != 1) {
+        e = ast_for_expr(c, RCHILD(n, -2));
+        if (!e)
+            return NULL;
+    } else {
+        e = NameConstant(Py_True, LINENO(n), n->n_col_offset, c->c_arena);
+    }
     keyword_ty kw = keyword(key, e, c->c_arena);
     if (!kw)
         return NULL;
